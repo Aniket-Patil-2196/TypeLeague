@@ -101,6 +101,11 @@ export const ArenaPage = () => {
   const handleKeyDown = (e) => {
     if (!isTypingActive) return;
 
+    // Prevent default scroll behavior on Space, Backspace, Tab
+    if (e.key === ' ' || e.key === 'Backspace' || e.key === 'Tab') {
+      e.preventDefault();
+    }
+
     if (e.key === 'Backspace') {
       setTypedText((prev) => prev.slice(0, -1));
       setEvents((prev) => [
@@ -111,6 +116,7 @@ export const ArenaPage = () => {
     }
 
     if (e.key.length === 1) {
+      e.preventDefault();
       const nextText = typedText + e.key;
       setTypedText(nextText);
       setEvents((prev) => [

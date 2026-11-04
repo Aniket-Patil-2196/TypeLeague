@@ -20,6 +20,11 @@ export const ArenaPreview = () => {
   };
 
   const handleKeyDown = (e) => {
+    // Prevent default scroll when space or backspace is pressed
+    if (e.key === ' ' || e.key === 'Backspace' || e.key === 'Tab') {
+      e.preventDefault();
+    }
+
     if (!startTime && e.key.length === 1) {
       setStartTime(Date.now());
     }
@@ -30,6 +35,7 @@ export const ArenaPreview = () => {
     }
 
     if (e.key.length === 1 && typed.length < SAMPLE_PASSAGE.length) {
+      e.preventDefault();
       const nextTyped = typed + e.key;
       setTyped(nextTyped);
 
