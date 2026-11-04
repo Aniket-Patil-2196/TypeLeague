@@ -14,8 +14,8 @@ export const publishChallenge = async (req, res, next) => {
 
 export const getTodayChallenge = async (req, res, next) => {
   try {
-    const { scope = 'global', groupId, timezone } = req.query;
-    const challenge = await challengeService.getTodayChallenge(scope, groupId, timezone);
+    const { scope = 'global', groupId, timezone, contentId } = req.query;
+    const challenge = await challengeService.getTodayChallenge(scope, groupId, timezone, contentId);
     res.status(200).json({
       success: true,
       data: { challenge },

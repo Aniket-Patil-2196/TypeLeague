@@ -2,6 +2,7 @@ import { PointTransaction, Achievement, UserAchievement } from '../models/gamifi
 import { DailyResult, Attempt } from '../models/attempt.model.js';
 import { User } from '../models/user.model.js';
 import { Group } from '../models/group.model.js';
+import { Membership } from '../models/membership.model.js';
 
 export const DEFAULT_ACHIEVEMENTS = [
   { code: 'FIRST_TEST', title: 'FIRST VELOCITY', description: 'Complete your first verified typing test.', category: 'typing', iconName: 'Play' },
@@ -121,6 +122,24 @@ export const getLeaderboardData = async ({ scope = 'global', groupId = null, per
     ...item,
     delta: index === 0 ? 0 : index % 2 === 0 ? 1 : -1,
   }));
+
+  // If clan has no competition daily results yet, display active members roster ranked by best stats/XP
+  if (standings.length === 0 && scope === 'group' && groupId) {
+    const memberships = await Membership.find({ group: groupId, status: 'active' })
+      .populate('user', 'username fullName avatar stats xp level')
+      .sort({ 'user.stats.averageWpm': -1, 'user.xp': -1 });
+
+    return memberships
+      .filter((m) => m.user)
+      .map((m, index) => ({
+        rank: index + 1,
+        user: m.user,
+        score: Math.round((m.user.stats?.averageWpm || 0) * 10) || 0,
+        wpm: m.user.stats?.averageWpm || 0,
+        accuracy: m.user.stats?.averageAccuracy || 0,
+        delta: 0,
+      }));
+  }
 
   return standings;
 };

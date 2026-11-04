@@ -18,11 +18,29 @@ export const LeaderboardsPage = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('all-time');
   const [scope, setScope] = useState('global');
+  const [userGroups, setUserGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+
+  useEffect(() => {
+    const fetchUserGroups = async () => {
+      try {
+        const res = await api.get('/groups/user/me');
+        setUserGroups(res.data.data.groups || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchUserGroups();
+  }, []);
 
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/gamification/leaderboard?scope=${scope}&period=${period}`);
+      let url = `/gamification/leaderboard?scope=${scope}&period=${period}`;
+      if (scope === 'group' && selectedGroupId) {
+        url += `&groupId=${selectedGroupId}`;
+      }
+      const res = await api.get(url);
       setStandings(res.data.data.standings || []);
     } catch (err) {
       console.error(err);
@@ -33,7 +51,7 @@ export const LeaderboardsPage = () => {
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [scope, period]);
+  }, [scope, selectedGroupId, period]);
 
   const top1 = standings[0];
   const top2 = standings[1];
@@ -81,6 +99,42 @@ export const LeaderboardsPage = () => {
             </button>
           </div>
         </div>
+
+        {/* Community Scope Filter Tabs */}
+        {userGroups.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-line flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-ink-muted uppercase mr-1 text-[11px] font-bold">ROSTER SCOPE:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setScope('global');
+                setSelectedGroupId(null);
+              }}
+              className={`px-3 py-1 border uppercase text-[11px] font-bold tracking-wider ${
+                scope === 'global' ? 'bg-ink text-surface border-ink' : 'bg-surface text-ink-muted border-line hover:text-ink'
+              }`}
+            >
+              GLOBAL ARENA
+            </button>
+            {userGroups.map((grp) => (
+              <button
+                key={grp._id}
+                type="button"
+                onClick={() => {
+                  setScope('group');
+                  setSelectedGroupId(grp._id);
+                }}
+                className={`px-3 py-1 border uppercase text-[11px] font-bold tracking-wider ${
+                  scope === 'group' && selectedGroupId === grp._id
+                    ? 'bg-accent text-ink border-ink'
+                    : 'bg-surface text-ink-muted border-line hover:text-ink'
+                }`}
+              >
+                {grp.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (

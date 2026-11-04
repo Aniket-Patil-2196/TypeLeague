@@ -22,6 +22,10 @@ export const JoinInvitePage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (token) {
+      sessionStorage.setItem('pending_invite_token', token);
+    }
+
     const verifyToken = async () => {
       setLoading(true);
       setError('');
@@ -133,17 +137,38 @@ export const JoinInvitePage = () => {
 
         {/* Actions */}
         <div className="space-y-4">
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full"
-            loading={joining}
-            onClick={handleAccept}
-          >
-            {isAuthenticated ? 'ACCEPT INVITATION & ENTER' : 'AUTHENTICATE TO ACCEPT'}
-          </Button>
+          {isAuthenticated ? (
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              loading={joining}
+              onClick={handleAccept}
+            >
+              ACCEPT INVITATION &amp; ENTER CLAN
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={() => navigate('/register', { state: { from: { pathname: `/invite/${token}` } } })}
+              >
+                CREATE ACCOUNT &amp; JOIN CLAN
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                className="w-full"
+                onClick={() => navigate('/login', { state: { from: { pathname: `/invite/${token}` } } })}
+              >
+                LOG IN TO ACCEPT
+              </Button>
+            </div>
+          )}
 
-          <div className="text-center">
+          <div className="text-center pt-2">
             <Link
               to="/groups"
               className="text-xs text-ink-muted hover:text-ink uppercase underline underline-offset-4"

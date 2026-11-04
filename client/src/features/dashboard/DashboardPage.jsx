@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   Button,
@@ -8,6 +9,7 @@ import {
   CornerMarker,
   EmptyState,
   Badge,
+  Skeleton,
 } from '../../components/ui';
 import {
   Zap,
@@ -22,6 +24,22 @@ import {
 
 export const DashboardPage = () => {
   const { user } = useAuthStore();
+  const [joinedGroups, setJoinedGroups] = useState([]);
+  const [loadingGroups, setLoadingGroups] = useState(true);
+
+  useEffect(() => {
+    const fetchJoined = async () => {
+      try {
+        const res = await api.get('/groups/user/me');
+        setJoinedGroups(res.data.data.groups || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+    fetchJoined();
+  }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -215,13 +233,55 @@ export const DashboardPage = () => {
         <div className="lg:col-span-4 space-y-6">
           {/* Joined Groups Cell */}
           <Cell indexLabel="[GRP_01]" title="JOINED COMMUNITIES">
-            <EmptyState
-              title="NO COMMUNITIES JOINED"
-              description="Join public communities or accept private clan invitations to compete with friends and batchmates."
-              actionLabel="EXPLORE GROUPS"
-              onAction={() => window.location.href = '/groups'}
-              indexLabel="[CLAN_NONE]"
-            />
+            {loadingGroups ? (
+              <div className="space-y-3 py-2">
+                <Skeleton height="h-14" width="w-full" />
+                <Skeleton height="h-14" width="w-full" />
+              </div>
+            ) : joinedGroups.length > 0 ? (
+              <div className="space-y-3">
+                {joinedGroups.map((grp) => (
+                  <div key={grp._id} className="border border-line bg-surface p-3.5 flex items-center justify-between hover:border-ink transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-display font-bold text-sm text-ink uppercase line-clamp-1">
+                          {grp.name}
+                        </span>
+                        <Badge
+                          variant={grp.userRole === 'owner' ? 'accent' : grp.userRole === 'moderator' ? 'ok' : 'neutral'}
+                          size="sm"
+                        >
+                          {grp.userRole}
+                        </Badge>
+                      </div>
+                      <span className="text-[10px] text-ink-muted uppercase">
+                        {grp.stats?.memberCount || 1} MEMBERS &middot; {grp.category}
+                      </span>
+                    </div>
+                    <Link to={`/groups/${grp._id}`}>
+                      <Button variant="secondary" size="sm">
+                        OPEN
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+                <div className="pt-2">
+                  <Link to="/my-groups">
+                    <Button variant="outline" size="sm" className="w-full">
+                      VIEW ALL MY COMMUNITIES
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <EmptyState
+                title="NO COMMUNITIES JOINED"
+                description="Join public communities or accept private clan invitations to compete with friends and batchmates."
+                actionLabel="EXPLORE GROUPS"
+                onAction={() => window.location.href = '/groups'}
+                indexLabel="[CLAN_NONE]"
+              />
+            )}
           </Cell>
 
           {/* Current Rankings Cell */}

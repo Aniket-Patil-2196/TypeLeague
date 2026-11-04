@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Button, Input, CornerMarker } from '../../components/ui';
 import { CropMarkBox } from '../../components/ui/CropMarkBox';
@@ -15,6 +15,10 @@ export const RegisterPage = () => {
   const [formError, setFormError] = useState('');
   const { register, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const pendingInvite = sessionStorage.getItem('pending_invite_token');
+  const redirectTarget = location.state?.from?.pathname || (pendingInvite ? `/invite/${pendingInvite}` : '/dashboard');
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -36,7 +40,7 @@ export const RegisterPage = () => {
 
     const res = await register(formData);
     if (res.success) {
-      navigate('/dashboard');
+      navigate(redirectTarget, { replace: true });
     } else {
       setFormError(res.message);
     }

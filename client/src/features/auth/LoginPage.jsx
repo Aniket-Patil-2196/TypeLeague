@@ -12,7 +12,8 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const pendingInvite = sessionStorage.getItem('pending_invite_token');
+  const from = location.state?.from?.pathname || (pendingInvite ? `/invite/${pendingInvite}` : '/dashboard');
 
   const handleSubmit = async (e) => {
     e.preventDefault();

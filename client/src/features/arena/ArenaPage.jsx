@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -14,6 +15,9 @@ import { Play, RotateCcw, Award, CheckCircle2, AlertTriangle, ArrowRight } from 
 
 export const ArenaPage = () => {
   const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const groupId = searchParams.get('groupId');
+  const contentId = searchParams.get('contentId');
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
@@ -33,7 +37,16 @@ export const ArenaPage = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/challenges/today');
+      const params = new URLSearchParams();
+      if (groupId) {
+        params.append('scope', 'group');
+        params.append('groupId', groupId);
+      }
+      if (contentId) {
+        params.append('contentId', contentId);
+      }
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const res = await api.get(`/challenges/today${queryString}`);
       setChallenge(res.data.data.challenge);
       if (res.data.data.challenge) {
         setTimeLeft(res.data.data.challenge.duration);
@@ -50,7 +63,7 @@ export const ArenaPage = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, []);
+  }, [groupId, contentId]);
 
   const handleStartSession = async () => {
     if (!challenge) return;
@@ -176,15 +189,22 @@ export const ArenaPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="text-xs uppercase tracking-widest text-ink-muted block mb-1">
-              [ARENA // SYNCHRONIZED_EVENT]
+              {groupId ? (contentId ? '[ARENA // CLAN_PASSAGE_PRACTICE]' : '[ARENA // CLAN_DAILY_CHALLENGE]') : '[ARENA // SYNCHRONIZED_EVENT]'}
             </span>
             <h1 className="font-display text-2xl sm:text-4xl uppercase font-bold text-ink">
               {challenge.title}
             </h1>
             <p className="text-xs text-ink-soft mt-1">
-              Duration: {challenge.duration}s &middot; Attempts: {challenge.attemptsAllowed} &middot; DateKey: {challenge.dateKey}
+              Duration: {challenge.duration}s &middot; Attempts: {challenge.attemptsAllowed > 0 ? challenge.attemptsAllowed : 'Unlimited Practice'} &middot; DateKey: {challenge.dateKey}
             </p>
           </div>
+          {groupId && (
+            <Link to={`/groups/${groupId}`}>
+              <Button variant="secondary" size="sm">
+                BACK TO CLAN
+              </Button>
+            </Link>
+          )}
           <Badge variant="accent" size="md">
             OFFICIAL DAILY
           </Badge>

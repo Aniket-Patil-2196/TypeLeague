@@ -3,6 +3,7 @@ import { Challenge } from '../models/challenge.model.js';
 import { Attempt, DailyResult } from '../models/attempt.model.js';
 import { User } from '../models/user.model.js';
 import { Membership } from '../models/membership.model.js';
+import { TypingContent } from '../models/content.model.js';
 import { calculateScores, compareAttempts, getDateKey } from './scoring.service.js';
 import { checkAndUnlockAchievements } from './gamification.service.js';
 
@@ -51,12 +52,77 @@ export const publishChallenge = async (userId, data) => {
   return challenge;
 };
 
-export const getTodayChallenge = async (scope = 'global', groupId = null, timezone = 'Asia/Kolkata') => {
+export const getTodayChallenge = async (scope = 'global', groupId = null, timezone = 'Asia/Kolkata', contentId = null) => {
   const dateKey = getDateKey(new Date(), timezone);
+
+  // If specific passage practice requested
+  if (contentId) {
+    let passageChallenge = await Challenge.findOne({ contentId });
+    if (!passageChallenge) {
+      const groupContent = await TypingContent.findById(contentId);
+      if (groupContent) {
+        passageChallenge = await Challenge.create({
+          title: groupContent.title,
+          passageText: groupContent.passageText,
+          contentId: groupContent._id,
+          scope: scope === 'group' ? 'group' : 'global',
+          group: groupId || undefined,
+          duration: Math.min(Math.max(groupContent.estimatedDuration || 60, 30), 180),
+          difficulty: groupContent.difficulty || 'Medium',
+          attemptsAllowed: 0, // unlimited practice attempts
+          dateKey,
+          timezone,
+          status: 'active',
+          createdBy: groupContent.createdBy,
+        });
+      }
+    }
+    if (passageChallenge) return passageChallenge;
+  }
+
   const query = { scope, dateKey, status: 'active' };
   if (scope === 'group' && groupId) query.group = groupId;
 
   let challenge = await Challenge.findOne(query);
+
+  // Auto-activate group challenge if not yet created for today
+  if (!challenge && scope === 'group' && groupId) {
+    const groupContent = await TypingContent.findOne({ group: groupId, status: 'Published' }).sort({ createdAt: -1 });
+    if (groupContent) {
+      challenge = await Challenge.create({
+        title: groupContent.title,
+        passageText: groupContent.passageText,
+        contentId: groupContent._id,
+        scope: 'group',
+        group: groupId,
+        duration: Math.min(Math.max(groupContent.estimatedDuration || 60, 30), 180),
+        difficulty: groupContent.difficulty || 'Medium',
+        attemptsAllowed: 3,
+        dateKey,
+        timezone,
+        status: 'active',
+        createdBy: groupContent.createdBy,
+      });
+    } else {
+      const fallbackClanText = "Consistent deliberate practice separates casual typists from elite competitors. Speed without accuracy is chaotic noise, but precision under pressure constructs mastery. Train daily with your circle.";
+      const admin = await User.findOne();
+      if (admin) {
+        challenge = await Challenge.create({
+          title: "Clan Daily Benchmark: Precision & Velocity",
+          passageText: fallbackClanText,
+          scope: "group",
+          group: groupId,
+          duration: 60,
+          difficulty: "Medium",
+          attemptsAllowed: 3,
+          dateKey,
+          timezone,
+          status: "active",
+          createdBy: admin._id,
+        });
+      }
+    }
+  }
 
   // If no global challenge exists for today, automatically activate one from shared library or default fallback
   if (!challenge && scope === 'global') {

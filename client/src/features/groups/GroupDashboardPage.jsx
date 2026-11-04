@@ -60,6 +60,10 @@ export const GroupDashboardPage = () => {
   const [membersList, setMembersList] = useState([]);
   const [invitationsList, setInvitationsList] = useState([]);
   const [copiedToken, setCopiedToken] = useState(null);
+  const [dailyChallenge, setDailyChallenge] = useState(null);
+  const [loadingChallenge, setLoadingChallenge] = useState(false);
+  const [clanStandings, setClanStandings] = useState([]);
+  const [loadingStandings, setLoadingStandings] = useState(false);
 
   // Generate Invite Form
   const [inviteDays, setInviteDays] = useState(7);
@@ -118,6 +122,30 @@ export const GroupDashboardPage = () => {
     }
   };
 
+  const fetchClanChallenge = async () => {
+    setLoadingChallenge(true);
+    try {
+      const res = await api.get(`/challenges/today?scope=group&groupId=${id}`);
+      setDailyChallenge(res.data.data.challenge);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingChallenge(false);
+    }
+  };
+
+  const fetchClanLeaderboard = async () => {
+    setLoadingStandings(true);
+    try {
+      const res = await api.get(`/gamification/leaderboard?scope=group&groupId=${id}&period=all-time`);
+      setClanStandings(res.data.data.standings || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingStandings(false);
+    }
+  };
+
   useEffect(() => {
     if (!authLoading) {
       fetchGroup();
@@ -165,6 +193,8 @@ export const GroupDashboardPage = () => {
     if (group && effectiveIsMember) {
       if (activeTab === 'content') fetchContent();
       if (activeTab === 'members') fetchMembers();
+      if (activeTab === 'challenge') fetchClanChallenge();
+      if (activeTab === 'leaderboard') fetchClanLeaderboard();
       if (activeTab === 'invitations' && isModerator) fetchInvitations();
     }
   }, [activeTab, group, effectiveIsMember, isModerator]);
@@ -374,14 +404,58 @@ export const GroupDashboardPage = () => {
 
       {/* TAB: DAILY CHALLENGE */}
       {activeTab === 'challenge' && (
-        <Cell indexLabel="[CHALLENGE_01]" title="CLAN DAILY COMPETITION">
-          <EmptyState
-            title="NO SYNCHRONIZED CLAN COMPETITION"
-            description="The daily group challenge system activates in Phase 3. Owners and moderators will schedule challenges using clan content."
-            actionLabel={isModerator ? 'PREPARE CLAN CONTENT' : undefined}
-            onAction={isModerator ? () => setActiveTab('content') : undefined}
-            indexLabel="[PHASE_3_PIPELINE]"
-          />
+        <Cell indexLabel="[CHALLENGE_01]" title="CLAN DAILY SYNCHRONIZED COMPETITION">
+          {loadingChallenge ? (
+            <div className="space-y-4 py-4">
+              <Skeleton height="h-24" width="w-full" />
+              <Skeleton height="h-32" width="w-full" />
+            </div>
+          ) : dailyChallenge ? (
+            <div className="space-y-6">
+              <div className="border border-line bg-surface p-6 sm:p-8 relative">
+                <CornerMarker position="top-left" size={6} />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="accent" size="sm">ACTIVE TODAY</Badge>
+                      <Badge variant="outline" size="sm">{dailyChallenge.difficulty || 'Medium'}</Badge>
+                      <span className="text-[10px] text-ink-muted uppercase">DATE: {dailyChallenge.dateKey}</span>
+                    </div>
+                    <h3 className="font-display text-xl sm:text-2xl uppercase font-bold text-ink">
+                      {dailyChallenge.title}
+                    </h3>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => navigate(`/arena?groupId=${id}&challengeId=${dailyChallenge._id}`)}
+                  >
+                    ENTER CLAN ARENA
+                  </Button>
+                </div>
+
+                <div className="bg-bg border border-line p-5 text-xs font-mono leading-relaxed text-ink-soft mb-6 select-none">
+                  {dailyChallenge.passageText}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-6 text-xs text-ink-muted border-t border-line pt-4 tabular-nums">
+                  <span>TIME LIMIT: <strong className="text-ink">{dailyChallenge.duration} SECONDS</strong></span>
+                  <span>&middot;</span>
+                  <span>MAX ATTEMPTS: <strong className="text-ink">{dailyChallenge.attemptsAllowed}</strong></span>
+                  <span>&middot;</span>
+                  <span>TIMEZONE: <strong className="text-ink">{dailyChallenge.timezone || 'Asia/Kolkata'}</strong></span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              title="NO ACTIVE CLAN CHALLENGE"
+              description="No active synchronized challenge has been scheduled for today yet. Add a passage in typing content to auto-activate today's competition."
+              actionLabel={isModerator ? 'MANAGE PASSAGES' : undefined}
+              onAction={isModerator ? () => setActiveTab('content') : undefined}
+              indexLabel="[CHALLENGE_NONE]"
+            />
+          )}
         </Cell>
       )}
 
@@ -449,9 +523,15 @@ export const GroupDashboardPage = () => {
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-line flex items-center justify-between text-[11px] text-ink-muted tabular-nums">
+                  <div className="pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] text-ink-muted tabular-nums">
                     <span>{item.wordCount} WORDS &middot; {item.charCount} CHARS</span>
-                    <span>EST. {item.estimatedDuration}S</span>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => navigate(`/arena?groupId=${id}&contentId=${item._id}`)}
+                    >
+                      PRACTICE TYPING
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -463,11 +543,66 @@ export const GroupDashboardPage = () => {
       {/* TAB: LEADERBOARD */}
       {activeTab === 'leaderboard' && (
         <Cell indexLabel="[RANKS_01]" title="CLAN INTERNAL STANDINGS">
-          <EmptyState
-            title="NO LEADERBOARD DATA"
-            description="Clan leaderboards compute from daily challenge results. This module activates in Phase 3/4."
-            indexLabel="[STANDINGS_PENDING]"
-          />
+          {loadingStandings ? (
+            <div className="space-y-3 py-4">
+              <Skeleton height="h-12" width="w-full" />
+              <Skeleton height="h-12" width="w-full" />
+            </div>
+          ) : clanStandings.length === 0 ? (
+            <EmptyState
+              title="NO STANDINGS RECORDED"
+              description="Complete the daily challenge or practice typing to record your performance on the clan leaderboard."
+              actionLabel="START CHALLENGE"
+              onAction={() => setActiveTab('challenge')}
+              indexLabel="[STANDINGS_ZERO]"
+            />
+          ) : (
+            <div className="border border-line bg-surface overflow-x-auto">
+              <table className="w-full border-collapse font-mono text-xs">
+                <thead>
+                  <tr className="bg-bg border-b border-line text-ink-muted uppercase tracking-wider text-left">
+                    <th className="p-3 border-r border-line text-center w-12">RANK</th>
+                    <th className="p-3 border-r border-line">CONTENDER</th>
+                    <th className="p-3 border-r border-line text-right">SCORE</th>
+                    <th className="p-3 border-r border-line text-right">NET WPM</th>
+                    <th className="p-3 text-right">ACCURACY</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {clanStandings.map((st, idx) => (
+                    <tr
+                      key={st.user?._id || idx}
+                      className={st.user?._id === user?._id ? 'bg-accent/10 font-medium' : 'hover:bg-bg/50'}
+                    >
+                      <td className="p-3 border-r border-line text-center font-bold tabular-nums">
+                        #{st.rank || idx + 1}
+                      </td>
+                      <td className="p-3 border-r border-line">
+                        <div className="flex items-center gap-2">
+                          <Avatar username={st.user?.username || 'user'} size="sm" />
+                          <span className="font-bold text-ink uppercase">
+                            {st.user?.username}
+                          </span>
+                          {st.user?._id === user?._id && (
+                            <Badge variant="accent" size="sm">YOU</Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3 border-r border-line text-right font-bold tabular-nums text-ink">
+                        {st.score || 0}
+                      </td>
+                      <td className="p-3 border-r border-line text-right font-bold tabular-nums text-accent">
+                        {typeof st.wpm === 'number' ? st.wpm.toFixed(1) : st.wpm}
+                      </td>
+                      <td className="p-3 text-right tabular-nums text-ink-soft">
+                        {typeof st.accuracy === 'number' ? st.accuracy.toFixed(1) : st.accuracy}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Cell>
       )}
 
