@@ -13,6 +13,8 @@ import {
   EmptyState,
   Avatar,
   CropMarkBox,
+  Input,
+  Textarea,
 } from '../../components/ui';
 import { ContentEditorModal } from './modals/ContentEditorModal';
 import { UploadTxtModal } from './modals/UploadTxtModal';
@@ -63,6 +65,16 @@ export const GroupDashboardPage = () => {
   const [inviteDays, setInviteDays] = useState(7);
   const [inviteMaxUses, setInviteMaxUses] = useState(0);
   const [generatingInvite, setGeneratingInvite] = useState(false);
+
+  // Settings Form State
+  const [settingsForm, setSettingsForm] = useState({
+    name: '',
+    description: '',
+    rules: '',
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsSuccess, setSettingsSuccess] = useState('');
+  const [settingsError, setSettingsError] = useState('');
 
   const fetchGroup = async () => {
     setLoading(true);
@@ -117,6 +129,37 @@ export const GroupDashboardPage = () => {
   ));
   const effectiveIsMember = isMember || isOwner;
   const isModerator = userRole === 'moderator' || isOwner;
+
+  useEffect(() => {
+    if (group) {
+      setSettingsForm({
+        name: group.name || '',
+        description: group.description || '',
+        rules: group.rules || '',
+      });
+    }
+  }, [group]);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    setSettingsSuccess('');
+    setSettingsError('');
+    try {
+      const res = await api.patch(`/groups/${group._id}`, {
+        name: settingsForm.name,
+        description: settingsForm.description,
+        rules: settingsForm.rules,
+      });
+      setGroup(res.data.data.group);
+      setSettingsSuccess('COMMUNITY CONFIGURATION UPDATED SUCCESSFULLY.');
+      setTimeout(() => setSettingsSuccess(''), 4000);
+    } catch (err) {
+      setSettingsError(err.response?.data?.message || 'Failed to update community settings.');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   useEffect(() => {
     if (group && effectiveIsMember) {
@@ -628,25 +671,73 @@ export const GroupDashboardPage = () => {
       {/* TAB: SETTINGS (OWNER ONLY) */}
       {activeTab === 'settings' && isOwner && (
         <Cell indexLabel="[SETTINGS_01]" title="COMMUNITY ADMINISTRATION">
-          <p className="text-xs text-ink-soft leading-relaxed mb-6">
-            Update community configuration. Only the designated founder possesses authority to commit changes.
-          </p>
-          <div className="space-y-4 max-w-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <p className="text-xs text-ink-soft leading-relaxed max-w-xl">
+              Update community configuration. Only the designated founder possesses authority to commit changes.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setActiveTab('overview')}
+            >
+              RETURN TO OVERVIEW
+            </Button>
+          </div>
+
+          {settingsSuccess && (
+            <div className="mb-6 p-3 bg-surface border border-ok text-ok text-xs uppercase tracking-wide">
+              {settingsSuccess}
+            </div>
+          )}
+
+          {settingsError && (
+            <div className="mb-6 p-3 bg-surface border border-error text-error text-xs uppercase tracking-wide">
+              {settingsError}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveSettings} className="space-y-4 max-w-xl">
             <Input
               label="Community Name"
-              defaultValue={group.name}
-              disabled
+              value={settingsForm.name}
+              onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
+              required
+              disabled={savingSettings}
             />
             <Textarea
-              label="Description"
-              defaultValue={group.description}
+              label="Description & Mission"
+              value={settingsForm.description}
+              onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
               rows={3}
-              disabled
+              disabled={savingSettings}
             />
-            <p className="text-[11px] text-ink-muted">
-              Settings update endpoint verified on backend. Advanced configuration controls persist across phases.
-            </p>
-          </div>
+            <Textarea
+              label="Clan Regulations / Rules"
+              value={settingsForm.rules}
+              onChange={(e) => setSettingsForm({ ...settingsForm, rules: e.target.value })}
+              rows={3}
+              disabled={savingSettings}
+            />
+            <div className="pt-2 flex items-center gap-4">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                loading={savingSettings}
+              >
+                SAVE CONFIGURATION
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => setActiveTab('overview')}
+                disabled={savingSettings}
+              >
+                DISCARD / BACK
+              </Button>
+            </div>
+          </form>
         </Cell>
       )}
 
