@@ -8,7 +8,7 @@ const SAMPLE_LEADERBOARD = [
   { rank: 2, name: 'NullPointer', wpm: 139.5, accuracy: 99.1, score: 138.2, xp: 75, delta: 2 },
   { rank: 3, name: 'ByteRacer', wpm: 134.0, accuracy: 98.6, score: 132.1, xp: 50, delta: -1 },
   { rank: 4, name: 'SyntaxGhost', wpm: 126.4, accuracy: 97.9, score: 123.7, xp: 25, delta: 1 },
-  { rank: 5, name: 'Aniket_S', wpm: 121.0, accuracy: 98.4, score: 119.0, xp: 25, delta: 0, isCurrentUser: true },
+  { rank: 5, name: 'Alex_M', wpm: 121.0, accuracy: 98.4, score: 119.0, xp: 25, delta: 0, isCurrentUser: true },
 ];
 
 export const LeaderboardPreview = ({ isSample = true }) => {

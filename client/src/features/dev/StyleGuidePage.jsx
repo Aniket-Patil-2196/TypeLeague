@@ -292,7 +292,7 @@ export const StyleGuidePage = () => {
               <div>
                 <p className="text-xs uppercase text-ink-muted mb-3">Square Avatars</p>
                 <div className="flex items-center gap-4">
-                  <Avatar name="Aniket Sharma" size={48} />
+                  <Avatar name="Alex Mercer" size={48} />
                   <Avatar name="Karan Singh" size={40} />
                   <Avatar name="Dev" size={32} />
                   <Avatar name="Z" size={24} />

@@ -72,7 +72,7 @@ export const RegisterPage = () => {
               type="text"
               name="fullName"
               required
-              placeholder="e.g. Aniket Sharma"
+              placeholder="e.g. Alex Mercer"
               value={formData.fullName}
               onChange={handleChange}
               disabled={isLoading}
@@ -83,7 +83,7 @@ export const RegisterPage = () => {
               type="text"
               name="username"
               required
-              placeholder="e.g. aniket_99"
+              placeholder="e.g. alex_99"
               value={formData.username}
               onChange={handleChange}
               disabled={isLoading}
