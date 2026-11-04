@@ -7,6 +7,7 @@ const router = Router();
 // Public routes
 router.get('/today', challengeController.getTodayChallenge);
 router.get('/:challengeId/leaderboard', challengeController.getLeaderboard);
+router.get('/:challengeId', challengeController.getChallengeById);
 
 // Protected routes
 router.use(protect);

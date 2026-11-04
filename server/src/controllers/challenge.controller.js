@@ -14,8 +14,27 @@ export const publishChallenge = async (req, res, next) => {
 
 export const getTodayChallenge = async (req, res, next) => {
   try {
-    const { scope = 'global', groupId, timezone, contentId } = req.query;
-    const challenge = await challengeService.getTodayChallenge(scope, groupId, timezone, contentId);
+    const { scope = 'global', groupId, timezone, contentId, challengeId } = req.query;
+    const challenge = await challengeService.getTodayChallenge(scope, groupId, timezone, contentId, challengeId);
+    res.status(200).json({
+      success: true,
+      data: { challenge },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getChallengeById = async (req, res, next) => {
+  try {
+    const { challengeId } = req.params;
+    const challenge = await challengeService.getChallengeById(challengeId);
+    if (!challenge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Challenge not found',
+      });
+    }
     res.status(200).json({
       success: true,
       data: { challenge },

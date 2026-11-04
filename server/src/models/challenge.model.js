@@ -28,7 +28,6 @@ const challengeSchema = new mongoose.Schema(
     },
     duration: {
       type: Number,
-      enum: [30, 60, 120, 180],
       default: 60,
     },
     difficulty: {
@@ -38,7 +37,6 @@ const challengeSchema = new mongoose.Schema(
     },
     attemptsAllowed: {
       type: Number,
-      enum: [1, 3, 5, 0], // 0 = unlimited
       default: 3,
     },
     dateKey: {

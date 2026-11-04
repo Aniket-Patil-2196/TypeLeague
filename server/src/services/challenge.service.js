@@ -52,8 +52,14 @@ export const publishChallenge = async (userId, data) => {
   return challenge;
 };
 
-export const getTodayChallenge = async (scope = 'global', groupId = null, timezone = 'Asia/Kolkata', contentId = null) => {
+export const getTodayChallenge = async (scope = 'global', groupId = null, timezone = 'Asia/Kolkata', contentId = null, challengeId = null) => {
   const dateKey = getDateKey(new Date(), timezone);
+
+  // If specific challenge ID requested directly
+  if (challengeId) {
+    const directChallenge = await Challenge.findById(challengeId);
+    if (directChallenge) return directChallenge;
+  }
 
   // If specific passage practice requested
   if (contentId) {
@@ -61,19 +67,20 @@ export const getTodayChallenge = async (scope = 'global', groupId = null, timezo
     if (!passageChallenge) {
       const groupContent = await TypingContent.findById(contentId);
       if (groupContent) {
+        const creator = groupContent.createdBy || (await User.findOne())?._id;
         passageChallenge = await Challenge.create({
           title: groupContent.title,
           passageText: groupContent.passageText,
           contentId: groupContent._id,
           scope: scope === 'group' ? 'group' : 'global',
-          group: groupId || undefined,
-          duration: Math.min(Math.max(groupContent.estimatedDuration || 60, 30), 180),
+          group: groupId || groupContent.group || undefined,
+          duration: groupContent.estimatedDuration || 60,
           difficulty: groupContent.difficulty || 'Medium',
           attemptsAllowed: 0, // unlimited practice attempts
           dateKey,
           timezone,
           status: 'active',
-          createdBy: groupContent.createdBy,
+          createdBy: creator,
         });
       }
     }
@@ -317,4 +324,8 @@ export const getChallengeLeaderboard = async (challengeId) => {
     rank: index + 1,
     ...res.toObject(),
   }));
+};
+
+export const getChallengeById = async (challengeId) => {
+  return await Challenge.findById(challengeId);
 };

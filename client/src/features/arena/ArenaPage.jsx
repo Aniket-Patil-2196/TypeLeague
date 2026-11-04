@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -15,9 +15,11 @@ import { Play, RotateCcw, Award, CheckCircle2, AlertTriangle, ArrowRight } from 
 
 export const ArenaPage = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const groupId = searchParams.get('groupId');
   const contentId = searchParams.get('contentId');
+  const challengeId = searchParams.get('challengeId');
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
@@ -45,11 +47,22 @@ export const ArenaPage = () => {
       if (contentId) {
         params.append('contentId', contentId);
       }
+      if (challengeId) {
+        params.append('challengeId', challengeId);
+      }
       const queryString = params.toString() ? `?${params.toString()}` : '';
       const res = await api.get(`/challenges/today${queryString}`);
-      setChallenge(res.data.data.challenge);
-      if (res.data.data.challenge) {
-        setTimeLeft(res.data.data.challenge.duration);
+      let targetChallenge = res.data.data?.challenge;
+
+      // Fallback if specific challengeId wasn't returned by /challenges/today
+      if (!targetChallenge && challengeId) {
+        const directRes = await api.get(`/challenges/${challengeId}`);
+        targetChallenge = directRes.data.data?.challenge;
+      }
+
+      setChallenge(targetChallenge || null);
+      if (targetChallenge) {
+        setTimeLeft(targetChallenge.duration || 60);
       }
     } catch (err) {
       setError('Failed to load active challenge.');
@@ -63,7 +76,7 @@ export const ArenaPage = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [groupId, contentId]);
+  }, [groupId, contentId, challengeId]);
 
   const handleStartSession = async () => {
     if (!challenge) return;
@@ -168,10 +181,15 @@ export const ArenaPage = () => {
     return (
       <div className="p-8 max-w-4xl mx-auto font-mono">
         <EmptyState
-          title="NO ACTIVE GLOBAL CHALLENGE"
-          description="A new synchronized challenge will activate shortly."
-          actionLabel="CHECK AGAIN"
-          onAction={fetchTodayChallenge}
+          title={groupId ? "CLAN CONTENT UNAVAILABLE" : "NO ACTIVE GLOBAL CHALLENGE"}
+          description={
+            groupId
+              ? "The selected clan passage or daily challenge could not be loaded. Please return to the clan dashboard or select another text."
+              : "A new synchronized challenge will activate shortly."
+          }
+          actionLabel={groupId ? "RETURN TO CLAN" : "CHECK AGAIN"}
+          onAction={groupId ? () => navigate(`/groups/${groupId}`) : fetchTodayChallenge}
+          indexLabel={groupId ? "[CLAN_EMPTY]" : "[GLOBAL_EMPTY]"}
         />
       </div>
     );

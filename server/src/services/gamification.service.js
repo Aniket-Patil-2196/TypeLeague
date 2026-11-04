@@ -123,24 +123,7 @@ export const getLeaderboardData = async ({ scope = 'global', groupId = null, per
     delta: index === 0 ? 0 : index % 2 === 0 ? 1 : -1,
   }));
 
-  // If clan has no competition daily results yet, display active members roster ranked by best stats/XP
-  if (standings.length === 0 && scope === 'group' && groupId) {
-    const memberships = await Membership.find({ group: groupId, status: 'active' })
-      .populate('user', 'username fullName avatar stats xp level')
-      .sort({ 'user.stats.averageWpm': -1, 'user.xp': -1 });
-
-    return memberships
-      .filter((m) => m.user)
-      .map((m, index) => ({
-        rank: index + 1,
-        user: m.user,
-        score: Math.round((m.user.stats?.averageWpm || 0) * 10) || 0,
-        wpm: m.user.stats?.averageWpm || 0,
-        accuracy: m.user.stats?.averageAccuracy || 0,
-        delta: 0,
-      }));
-  }
-
+  // Return verified standings only (members appear only after submitting a competition attempt)
   return standings;
 };
 
