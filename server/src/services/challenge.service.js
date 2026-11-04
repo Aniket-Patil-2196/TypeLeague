@@ -162,9 +162,11 @@ export const startAttemptSession = async (challengeId, userId) => {
     throw error;
   }
 
-  if (challenge.scope === 'group') {
+  if (challenge.scope === 'group' && challenge.group) {
+    const group = await Group.findById(challenge.group);
+    const isOwner = group && userId ? areIdsEqual(group.owner, userId) : false;
     const membership = await Membership.findOne({ group: challenge.group, user: userId, status: 'active' });
-    if (!membership) {
+    if (!isOwner && !membership) {
       const error = new Error('You must be a member of this clan to participate');
       error.statusCode = 403;
       throw error;

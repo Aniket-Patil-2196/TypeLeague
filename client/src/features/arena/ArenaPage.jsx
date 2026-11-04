@@ -81,20 +81,17 @@ export const ArenaPage = () => {
   const handleStartSession = async () => {
     if (!challenge) return;
     setError('');
-    try {
-      const res = await api.post(`/challenges/${challenge._id}/start`);
-      setSession(res.data.data);
-      setTimeLeft(res.data.data.duration);
+
+    const activateSession = (duration) => {
+      setTimeLeft(duration);
       setTypedText('');
       setEvents([]);
       setIsTypingActive(true);
       startTimeRef.current = Date.now();
-
       if (inputRef.current) {
         inputRef.current.focus();
       }
 
-      // Start Countdown Timer
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
@@ -106,10 +103,29 @@ export const ArenaPage = () => {
           return prev - 1;
         });
       }, 1000);
+    };
+
+    if (contentId || challenge.attemptsAllowed === 0) {
+      setSession({ sessionToken: 'practice-' + Date.now(), duration: challenge.duration || 180 });
+      activateSession(challenge.duration || 180);
+      api.post(`/challenges/${challenge._id}/start`).catch(() => {});
+      return;
+    }
+
+    try {
+      const res = await api.post(`/challenges/${challenge._id}/start`);
+      setSession(res.data.data);
+      activateSession(res.data.data.duration);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not start session.');
     }
   };
+
+  useEffect(() => {
+    if (challenge && contentId && !isTypingActive) {
+      handleStartSession();
+    }
+  }, [challenge, contentId]);
 
   const handleKeyDown = (e) => {
     if (!isTypingActive) return;

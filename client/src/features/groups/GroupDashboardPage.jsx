@@ -19,6 +19,7 @@ import {
 import { ContentEditorModal } from './modals/ContentEditorModal';
 import { UploadTxtModal } from './modals/UploadTxtModal';
 import { SharedLibraryModal } from './modals/SharedLibraryModal';
+import { ClanPracticeModal } from './modals/ClanPracticeModal';
 import {
   Users,
   Zap,
@@ -54,6 +55,7 @@ export const GroupDashboardPage = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isSharedOpen, setIsSharedOpen] = useState(false);
+  const [practicePassage, setPracticePassage] = useState(null);
 
   // Tab Data States
   const [contentList, setContentList] = useState([]);
@@ -436,9 +438,17 @@ export const GroupDashboardPage = () => {
                   <Button
                     variant="primary"
                     size="lg"
-                    onClick={() => navigate(`/arena?groupId=${id}&challengeId=${dailyChallenge._id}`)}
+                    onClick={() => setPracticePassage({
+                      title: dailyChallenge.title,
+                      passageText: dailyChallenge.passageText,
+                      difficulty: dailyChallenge.difficulty,
+                      category: 'CLAN DAILY',
+                      wordCount: dailyChallenge.passageText.split(/\s+/).filter(Boolean).length,
+                      estimatedDuration: dailyChallenge.duration,
+                      _id: dailyChallenge.contentId || dailyChallenge._id,
+                    })}
                   >
-                    ENTER CLAN ARENA
+                    START DAILY CHALLENGE
                   </Button>
                 </div>
 
@@ -536,7 +546,7 @@ export const GroupDashboardPage = () => {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => navigate(`/arena?groupId=${id}&contentId=${item._id}`)}
+                      onClick={() => setPracticePassage(item)}
                     >
                       PRACTICE TYPING
                     </Button>
@@ -904,6 +914,13 @@ export const GroupDashboardPage = () => {
         onClose={() => setIsSharedOpen(false)}
         groupId={group._id}
         onImportSuccess={fetchContent}
+      />
+
+      <ClanPracticeModal
+        isOpen={Boolean(practicePassage)}
+        onClose={() => setPracticePassage(null)}
+        passage={practicePassage}
+        groupId={group._id}
       />
     </div>
   );
