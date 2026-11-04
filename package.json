@@ -1,0 +1,20 @@
+{
+  "name": "typeleague-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "npm run dev --workspace=client",
+    "server": "npm run start --workspace=server",
+    "qa:design": "node scripts/qa-design.js",
+    "test": "npm run test --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

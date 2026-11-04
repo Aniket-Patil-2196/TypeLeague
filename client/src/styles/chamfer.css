@@ -1,0 +1,23 @@
+/* Chamfer corner utilities (diagonal cuts, NO rounded curves) */
+
+/* Button / Small chamfer: 8px cut at top-left and bottom-right */
+.chamfer-sm {
+  clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
+}
+
+/* Medium chamfer: 12px cut at top-left and bottom-right */
+.chamfer-md {
+  clip-path: polygon(12px 0%, 100% 0%, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0% 100%, 0% 12px);
+}
+
+/* Header chamfer: 20px cut at bottom-left and bottom-right outer corners */
+.chamfer-header {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px));
+}
+
+/* Outer wrapper for bordered chamfer elements */
+.chamfer-border-wrap {
+  display: inline-block;
+  background-color: var(--line-strong);
+  padding: 1px;
+}

@@ -1,0 +1,47 @@
+import http from 'http';
+import { Server } from 'socket.io';
+import app from './app.js';
+import { env } from './config/env.js';
+import { connectDB } from './config/db.js';
+import { User } from './models/user.model.js';
+import { seedSharedContent } from './utils/seed.js';
+import { initAchievements } from './services/gamification.service.js';
+import { configureSockets } from './sockets/socket.handler.js';
+
+const server = http.createServer(app);
+
+// Socket.IO configuration
+export const io = new Server(server, {
+  cors: {
+    origin: env.CLIENT_URL,
+    credentials: true,
+  },
+});
+
+configureSockets(io);
+
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    // Check or create system admin for shared content
+    let admin = await User.findOne({ role: 'admin' });
+    if (!admin) {
+      admin = await User.findOne();
+    }
+    if (admin) {
+      await seedSharedContent(admin._id);
+    }
+    await initAchievements();
+
+    server.listen(env.PORT, () => {
+      console.log(`[Server] TypeLeague Backend running on port ${env.PORT} in ${env.NODE_ENV} mode`);
+      console.log(`[Server] Health check: http://localhost:${env.PORT}/api/v1/health`);
+    });
+  } catch (error) {
+    console.error(`[Server] Startup failure:`, error);
+    process.exit(1);
+  }
+};
+
+startServer();

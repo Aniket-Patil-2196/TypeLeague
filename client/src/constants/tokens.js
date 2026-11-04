@@ -1,0 +1,15 @@
+export const TOKENS = [
+  { name: '--bg', value: '#E4E4E4', desc: 'Page canvas, grid cells' },
+  { name: '--surface', value: '#F6F6F6', desc: 'Raised cells, inputs, header' },
+  { name: '--ink', value: '#1B1B1B', desc: 'Primary text, strong borders' },
+  { name: '--ink-soft', value: '#4A4A4A', desc: 'Secondary text' },
+  { name: '--ink-muted', value: '#767676', desc: 'Muted text, placeholders' },
+  { name: '--line', value: '#B3B3B3', desc: 'Default 1px grid lines' },
+  { name: '--line-strong', value: '#1B1B1B', desc: 'Emphasis borders, active' },
+  { name: '--accent', value: '#FF6D1F', desc: 'The single signal accent' },
+  { name: '--accent-press', value: '#E85A0D', desc: 'Accent pressed / hover' },
+  { name: '--panel', value: '#0E0E0E', desc: 'Dark arena tiles, media' },
+  { name: '--panel-line', value: '#3A3A3A', desc: 'Lines inside dark tiles' },
+  { name: '--error', value: '#D93A2B', desc: 'Errors and mistyped characters' },
+  { name: '--ok', value: '#2B8A57', desc: 'Confirmations and success' },
+];
