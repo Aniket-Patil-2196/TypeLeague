@@ -1,17 +1,19 @@
 import * as authService from '../services/auth.service.js';
 import { env } from '../config/env.js';
 
+const isProduction = env.NODE_ENV === 'production';
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax', // allows smooth dev navigation
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax', // 'none' is required for cross-domain cookies (Vercel frontend -> Render backend)
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
 const CLEAR_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
 };
 
 export const register = async (req, res, next) => {

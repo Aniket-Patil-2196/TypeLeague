@@ -1,6 +1,6 @@
 import http from 'http';
 import { Server } from 'socket.io';
-import app from './app.js';
+import app, { corsOptions } from './app.js';
 import { env } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { User } from './models/user.model.js';
@@ -10,12 +10,9 @@ import { configureSockets } from './sockets/socket.handler.js';
 
 const server = http.createServer(app);
 
-// Socket.IO configuration
+// Socket.IO configuration with unified CORS
 export const io = new Server(server, {
-  cors: {
-    origin: env.CLIENT_URL,
-    credentials: true,
-  },
+  cors: corsOptions,
 });
 
 configureSockets(io);
