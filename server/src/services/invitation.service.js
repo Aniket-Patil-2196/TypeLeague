@@ -3,6 +3,7 @@ import { Invitation } from '../models/invitation.model.js';
 import { Group } from '../models/group.model.js';
 import { Membership } from '../models/membership.model.js';
 import { hashToken } from '../utils/jwt.utils.js';
+import { areIdsEqual } from '../utils/id.utils.js';
 
 export const createInvitation = async (groupId, userId, { expiresInDays = 7, maxUses = 0 } = {}) => {
   const group = await Group.findById(groupId);
@@ -13,8 +14,9 @@ export const createInvitation = async (groupId, userId, { expiresInDays = 7, max
   }
 
   // Requester must be owner or moderator
-  const requesterMembership = await Membership.findOne({ group: groupId, user: userId });
-  if (!requesterMembership || !['owner', 'moderator'].includes(requesterMembership.role)) {
+  const isOwner = areIdsEqual(group.owner, userId);
+  const requesterMembership = await Membership.findOne({ group: groupId, user: userId, status: 'active' });
+  if (!isOwner && (!requesterMembership || !['owner', 'moderator'].includes(requesterMembership.role))) {
     const error = new Error('Only owners and moderators can generate invitation links');
     error.statusCode = 403;
     throw error;
@@ -141,8 +143,16 @@ export const revokeInvitation = async (invitationId, userId) => {
 };
 
 export const getGroupInvitations = async (groupId, userId) => {
-  const membership = await Membership.findOne({ group: groupId, user: userId });
-  if (!membership || !['owner', 'moderator'].includes(membership.role)) {
+  const group = await Group.findById(groupId);
+  if (!group) {
+    const error = new Error('Group not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const isOwner = areIdsEqual(group.owner, userId);
+  const membership = await Membership.findOne({ group: groupId, user: userId, status: 'active' });
+  if (!isOwner && (!membership || !['owner', 'moderator'].includes(membership.role))) {
     const error = new Error('Access denied to invitation records');
     error.statusCode = 403;
     throw error;

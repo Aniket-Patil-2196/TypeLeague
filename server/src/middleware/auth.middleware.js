@@ -34,6 +34,35 @@ export const protect = async (req, res, next) => {
   }
 };
 
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = verifyAccessToken(token);
+    if (!decoded || !decoded.id) {
+      return next();
+    }
+
+    const user = await User.findById(decoded.id).select('-refreshTokens');
+    if (user) {
+      req.user = user;
+    }
+    return next();
+  } catch (err) {
+    // If token is missing, expired, or invalid, continue as unauthenticated guest
+    return next();
+  }
+};
+
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {

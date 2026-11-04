@@ -7,6 +7,7 @@ import { User } from './models/user.model.js';
 import { seedSharedContent } from './utils/seed.js';
 import { initAchievements } from './services/gamification.service.js';
 import { configureSockets } from './sockets/socket.handler.js';
+import { repairExistingGroupMemberships } from './utils/repairGroups.js';
 
 const server = http.createServer(app);
 
@@ -30,6 +31,7 @@ const startServer = async () => {
       await seedSharedContent(admin._id);
     }
     await initAchievements();
+    await repairExistingGroupMemberships();
 
     server.listen(env.PORT, () => {
       console.log(`[Server] TypeLeague Backend running on port ${env.PORT} in ${env.NODE_ENV} mode`);

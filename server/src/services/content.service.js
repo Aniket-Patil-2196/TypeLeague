@@ -1,5 +1,7 @@
 import { TypingContent } from '../models/content.model.js';
 import { Membership } from '../models/membership.model.js';
+import { Group } from '../models/group.model.js';
+import { areIdsEqual } from '../utils/id.utils.js';
 
 /**
  * Text normalization & hygiene utility
@@ -63,7 +65,26 @@ export const createContent = async (userId, data) => {
 };
 
 export const getGroupContentList = async (groupId, userId, { category, difficulty, search, page = 1, limit = 20 }) => {
-  // If groupId is provided, verify membership if private
+  if (groupId) {
+    const group = await Group.findById(groupId);
+    if (!group) {
+      const error = new Error('Group not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    if (group.visibility === 'private') {
+      const isOwner = userId ? areIdsEqual(group.owner, userId) : false;
+      const membership = userId
+        ? await Membership.findOne({ group: groupId, user: userId, status: 'active' })
+        : null;
+      if (!isOwner && !membership) {
+        const error = new Error('Access denied to private community content');
+        error.statusCode = 403;
+        throw error;
+      }
+    }
+  }
+
   const query = { group: groupId, status: { $ne: 'Archived' } };
 
   if (category && category !== 'All') query.category = category;

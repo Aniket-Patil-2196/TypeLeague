@@ -1,5 +1,6 @@
 import { Group } from '../models/group.model.js';
 import { Membership } from '../models/membership.model.js';
+import { areIdsEqual } from '../utils/id.utils.js';
 
 export const createGroup = async (userId, data) => {
   const { name, description, category, visibility, rules, maxMembers, timezone, coverImage } = data;
@@ -17,13 +18,12 @@ export const createGroup = async (userId, data) => {
     stats: { memberCount: 1, averageWpm: 0, averageAccuracy: 0, activeToday: 0 },
   });
 
-  // Automatically create membership as owner
-  await Membership.create({
-    user: userId,
-    group: group._id,
-    role: 'owner',
-    status: 'active',
-  });
+  // Automatically create or update membership as active owner (idempotent)
+  await Membership.findOneAndUpdate(
+    { user: userId, group: group._id },
+    { role: 'owner', status: 'active', joinedAt: new Date() },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   return group;
 };
@@ -92,22 +92,43 @@ export const getGroupDetails = async (groupId, userId) => {
     throw error;
   }
 
+  const isOwner = userId ? areIdsEqual(group.owner, userId) : false;
+
   let userMembership = null;
   if (userId) {
-    userMembership = await Membership.findOne({ user: userId, group: groupId, status: 'active' });
+    userMembership = await Membership.findOne({
+      user: userId,
+      group: groupId,
+      status: 'active',
+    });
+
+    // Self-heal: If authenticated user is group owner, ensure active owner membership exists
+    if (isOwner && (!userMembership || userMembership.role !== 'owner')) {
+      userMembership = await Membership.findOneAndUpdate(
+        { user: userId, group: groupId },
+        { role: 'owner', status: 'active', joinedAt: userMembership?.joinedAt || new Date() },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
   }
 
-  // If private group and user is not a member, deny access
-  if (group.visibility === 'private' && !userMembership) {
-    const error = new Error('This group is private. You must join via invitation link.');
-    error.statusCode = 403;
-    throw error;
+  // Authorization check for private groups:
+  // Owners and active members have access; unauthenticated or non-members are rejected
+  if (group.visibility === 'private') {
+    if (!userId || (!isOwner && !userMembership)) {
+      const error = new Error('This group is private. You must join via invitation link.');
+      error.statusCode = 403;
+      throw error;
+    }
   }
+
+  const effectiveRole = isOwner ? 'owner' : (userMembership?.role || null);
+  const effectiveIsMember = isOwner || Boolean(userMembership);
 
   return {
     group,
-    userRole: userMembership?.role || null,
-    isMember: !!userMembership,
+    userRole: effectiveRole,
+    isMember: effectiveIsMember,
   };
 };
 
@@ -119,7 +140,7 @@ export const updateGroup = async (groupId, userId, updateData) => {
     throw error;
   }
 
-  if (group.owner.toString() !== userId.toString()) {
+  if (!areIdsEqual(group.owner, userId)) {
     const error = new Error('Only the group owner can modify group settings');
     error.statusCode = 403;
     throw error;
@@ -201,7 +222,7 @@ export const leaveGroup = async (groupId, userId) => {
     throw error;
   }
 
-  if (membership.role === 'owner') {
+  if (membership.role === 'owner' || areIdsEqual(group.owner, userId)) {
     const otherOwners = await Membership.countDocuments({
       group: groupId,
       role: 'owner',
@@ -231,9 +252,16 @@ export const getGroupMembers = async (groupId, userId, { page = 1, limit = 20 })
     throw error;
   }
 
+  const isOwner = userId ? areIdsEqual(group.owner, userId) : false;
+
   if (group.visibility === 'private') {
-    const member = await Membership.findOne({ group: groupId, user: userId });
-    if (!member) {
+    if (!userId) {
+      const error = new Error('Access denied to private group member roster');
+      error.statusCode = 403;
+      throw error;
+    }
+    const member = await Membership.findOne({ group: groupId, user: userId, status: 'active' });
+    if (!isOwner && !member) {
       const error = new Error('Access denied to private group member roster');
       error.statusCode = 403;
       throw error;
@@ -277,13 +305,13 @@ export const updateMemberRole = async (groupId, targetUserId, newRole, requester
   }
 
   // Only the owner can promote or demote moderators
-  if (group.owner.toString() !== requesterId.toString()) {
+  if (!areIdsEqual(group.owner, requesterId)) {
     const error = new Error('Only the group owner can manage roles');
     error.statusCode = 403;
     throw error;
   }
 
-  if (targetUserId.toString() === requesterId.toString()) {
+  if (areIdsEqual(targetUserId, requesterId)) {
     const error = new Error('Cannot change owner role');
     error.statusCode = 400;
     throw error;
@@ -310,8 +338,9 @@ export const removeMember = async (groupId, targetUserId, requesterId) => {
     throw error;
   }
 
-  const requesterMembership = await Membership.findOne({ group: groupId, user: requesterId });
-  if (!requesterMembership) {
+  const isRequesterOwner = areIdsEqual(group.owner, requesterId);
+  const requesterMembership = await Membership.findOne({ group: groupId, user: requesterId, status: 'active' });
+  if (!isRequesterOwner && !requesterMembership) {
     const error = new Error('You are not a member of this group');
     error.statusCode = 403;
     throw error;
@@ -324,20 +353,22 @@ export const removeMember = async (groupId, targetUserId, requesterId) => {
     throw error;
   }
 
-  if (targetMembership.role === 'owner') {
+  if (targetMembership.role === 'owner' || areIdsEqual(group.owner, targetUserId)) {
     const error = new Error('Cannot remove group owner');
     error.statusCode = 403;
     throw error;
   }
 
+  const requesterRole = isRequesterOwner ? 'owner' : requesterMembership.role;
+
   // Moderator can only remove regular members; owner can remove anyone except self
-  if (requesterMembership.role === 'moderator' && targetMembership.role !== 'member') {
+  if (requesterRole === 'moderator' && targetMembership.role !== 'member') {
     const error = new Error('Moderators cannot remove other moderators or owners');
     error.statusCode = 403;
     throw error;
   }
 
-  if (requesterMembership.role === 'member') {
+  if (requesterRole === 'member') {
     const error = new Error('Regular members cannot remove other members');
     error.statusCode = 403;
     throw error;

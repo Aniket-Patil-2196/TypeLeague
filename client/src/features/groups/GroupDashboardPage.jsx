@@ -38,7 +38,7 @@ import {
 
 export const GroupDashboardPage = () => {
   const { id } = useParams();
-  const { user } = useAuthStore();
+  const { user, isLoading: authLoading } = useAuthStore();
   const navigate = useNavigate();
 
   const [group, setGroup] = useState(null);
@@ -107,16 +107,24 @@ export const GroupDashboardPage = () => {
   };
 
   useEffect(() => {
-    fetchGroup();
-  }, [id]);
+    if (!authLoading) {
+      fetchGroup();
+    }
+  }, [id, authLoading]);
+
+  const isOwner = userRole === 'owner' || (Boolean(user?._id && group?.owner) && (
+    (group.owner._id ? group.owner._id === user._id : group.owner === user._id)
+  ));
+  const effectiveIsMember = isMember || isOwner;
+  const isModerator = userRole === 'moderator' || isOwner;
 
   useEffect(() => {
-    if (group && isMember) {
+    if (group && effectiveIsMember) {
       if (activeTab === 'content') fetchContent();
       if (activeTab === 'members') fetchMembers();
-      if (activeTab === 'invitations' && ['owner', 'moderator'].includes(userRole)) fetchInvitations();
+      if (activeTab === 'invitations' && isModerator) fetchInvitations();
     }
-  }, [activeTab, group, isMember, userRole]);
+  }, [activeTab, group, effectiveIsMember, isModerator]);
 
   const handleGenerateInvite = async () => {
     setGeneratingInvite(true);
@@ -176,7 +184,7 @@ export const GroupDashboardPage = () => {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="p-8 max-w-7xl mx-auto space-y-6 font-mono">
         <Skeleton height="h-28" width="w-full" />
@@ -198,9 +206,6 @@ export const GroupDashboardPage = () => {
       </div>
     );
   }
-
-  const isOwner = userRole === 'owner';
-  const isModerator = userRole === 'moderator' || isOwner;
 
   const tabsList = [
     { id: 'overview', label: 'OVERVIEW' },
