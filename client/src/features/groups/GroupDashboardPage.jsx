@@ -297,10 +297,18 @@ export const GroupDashboardPage = () => {
         <CornerMarker position="top-left" size={8} />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-5">
-            <div className="w-16 h-16 border border-line bg-panel flex items-center justify-center shrink-0">
-              <span className="font-display font-black text-2xl text-surface">
-                {group.name.slice(0, 2).toUpperCase()}
-              </span>
+            <div className="w-16 h-16 border border-line bg-panel flex items-center justify-center shrink-0 overflow-hidden relative">
+              {group.coverImage ? (
+                <img
+                  src={group.coverImage}
+                  alt={group.name}
+                  className="w-full h-full object-cover filter grayscale contrast-125"
+                />
+              ) : (
+                <span className="font-display font-black text-2xl text-surface">
+                  {group.name.slice(0, 2).toUpperCase()}
+                </span>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-3 mb-1">
